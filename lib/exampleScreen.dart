@@ -173,7 +173,7 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
   AppBar _buildAppBar() {
     return AppBar(
       title: const Text(
-        "M7 Livelyness Detection",
+        "Blinkey Demo",
       ),
     );
   }
