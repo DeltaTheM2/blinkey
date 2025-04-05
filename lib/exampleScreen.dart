@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:eyeblinkdetectface/eyeblinkdetectface.dart';
 import 'package:eyeblinkdetectface/index.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class M7ExpampleScreen extends StatefulWidget {
   const M7ExpampleScreen({super.key});
@@ -13,7 +15,7 @@ class M7ExpampleScreen extends StatefulWidget {
 class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
   //* MARK: - Private Variables
   //? =========================================================
-  String? _capturedImagePath;
+  List<String> _capturedImagePaths = []; // Changed to a list to store multiple images
   final bool _isLoading = false;
   bool _startWithInfo = true;
   bool _allowAfterTimeOut = false;
@@ -41,17 +43,11 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
   void _initValues() {
     _veificationSteps.addAll(
       [
-        // M7LivelynessStepItem(
-        //   step: M7LivelynessStep.smile,
-        //   title: "Smile",
-        //   isCompleted: false,
-        // ),
         M7LivelynessStepItem(
           step: M7LivelynessStep.blink,
           title: "1. Blink",
           isCompleted: false,
         ),
-
         M7LivelynessStepItem(
           step: M7LivelynessStep.blink,
           title: "2. Blink",
@@ -62,9 +58,6 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
     Eyeblinkdetectface.instance.configure(
       contourColor: Colors.blue,
       thresholds: [
-        // M7SmileDetectionThreshold(
-        //   probability: 0.8,
-        // ),
         M7BlinkDetectionThreshold(
           leftEyeProbability: 0.25,
           rightEyeProbability: 0.25,
@@ -78,7 +71,8 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
   }
 
   void _onStartLivelyness() async {
-    setState(() => _capturedImagePath = null);
+    setState(() => _capturedImagePaths.clear()); // Clear previous images
+
     final String? response = await Eyeblinkdetectface.instance.detectLivelyness(
       context,
       config: M7DetectionConfig(
@@ -89,12 +83,15 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
         captureButtonColor: Colors.red,
       ),
     );
-    if (response == null) {
-      return;
+
+    if (response != null) {
+      setState(() {
+        _capturedImagePaths.add(response); // Add the captured image path
+      });
     }
-    setState(
-          () => _capturedImagePath = response,
-    );
+
+    // If the package supports multiple captures per step, you might need a loop or callback.
+    // For now, assuming it returns one image per full detection cycle.
   }
 
   String _getTitle(M7LivelynessStep step) {
@@ -135,7 +132,7 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            "Need to have atleast 1 step of verification",
+            "Need to have at least 1 step of verification",
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -158,12 +155,8 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
           isCompleted: false,
         ),
       );
-    } else {
-      if (!value) {
-        _veificationSteps.removeWhere(
-              (p0) => p0.step == step,
-        );
-      }
+    } else if (!value) {
+      _veificationSteps.removeWhere((p0) => p0.step == step);
     }
     setState(() {});
   }
@@ -172,9 +165,7 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
   //? =========================================================
   AppBar _buildAppBar() {
     return AppBar(
-      title: const Text(
-        "Blinkey Demo",
-      ),
+      title: const Text("Blinkey Demo"),
     );
   }
 
@@ -199,31 +190,36 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Spacer(
-          flex: 4,
-        ),
+        const Spacer(flex: 4),
         Visibility(
-          visible: _capturedImagePath != null,
+          visible: _capturedImagePaths.isNotEmpty,
           child: Expanded(
             flex: 7,
-            child: Image.file(
-              File(_capturedImagePath ?? ""),
-              fit: BoxFit.contain,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _capturedImagePaths.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Image.file(
+                    File(_capturedImagePaths[index]),
+                    fit: BoxFit.contain,
+                    width: 200,
+                  ),
+                );
+              },
             ),
           ),
         ),
         Visibility(
-          visible: _capturedImagePath != null,
+          visible: _capturedImagePaths.isNotEmpty,
           child: const Spacer(),
         ),
         Center(
           child: ElevatedButton(
             onPressed: _onStartLivelyness,
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                vertical: 10,
-                horizontal: 20,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
             ),
             child: const Text(
               "Detect Livelyness",
@@ -241,26 +237,17 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Spacer(
-              flex: 3,
-            ),
+            const Spacer(flex: 3),
             const Text(
               "Start with info screen:",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const Spacer(),
             CupertinoSwitch(
               value: _startWithInfo,
-              onChanged: (value) => setState(
-                    () => _startWithInfo = value,
-              ),
+              onChanged: (value) => setState(() => _startWithInfo = value),
             ),
-            const Spacer(
-              flex: 3,
-            ),
+            const Spacer(flex: 3),
           ],
         ),
         const Spacer(),
@@ -269,44 +256,30 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Spacer(
-              flex: 3,
-            ),
+            const Spacer(flex: 3),
             const Text(
               "Allow after timer is completed:",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const Spacer(),
             CupertinoSwitch(
               value: _allowAfterTimeOut,
-              onChanged: (value) => setState(
-                    () => _allowAfterTimeOut = value,
-              ),
+              onChanged: (value) => setState(() => _allowAfterTimeOut = value),
             ),
-            const Spacer(
-              flex: 3,
-            ),
+            const Spacer(flex: 3),
           ],
         ),
         const Spacer(),
         Text(
           "Detection Time-out Duration(In Seconds): ${_timeOutDuration == 100 ? "No Limit" : _timeOutDuration}",
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         Slider(
           min: 0,
           max: 100,
           value: _timeOutDuration.toDouble(),
-          onChanged: (value) => setState(
-                () => _timeOutDuration = value.toInt(),
-          ),
+          onChanged: (value) => setState(() => _timeOutDuration = value.toInt()),
         ),
         Expanded(
           flex: 14,
@@ -315,33 +288,18 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
             itemCount: M7LivelynessStep.values.length,
             itemBuilder: (context, index) => ExpansionTile(
               title: Text(
-                _getTitle(
-                  M7LivelynessStep.values[index],
-                ),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                _getTitle(M7LivelynessStep.values[index]),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               children: [
                 ListTile(
                   title: Text(
-                    _getSubTitle(
-                      M7LivelynessStep.values[index],
-                    ),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.normal,
-                    ),
+                    _getSubTitle(M7LivelynessStep.values[index]),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
                   ),
                   trailing: CupertinoSwitch(
-                    value: _isSelected(
-                      M7LivelynessStep.values[index],
-                    ),
-                    onChanged: (value) => _onStepValChanged(
-                      M7LivelynessStep.values[index],
-                      value,
-                    ),
+                    value: _isSelected(M7LivelynessStep.values[index]),
+                    onChanged: (value) => _onStepValChanged(M7LivelynessStep.values[index], value),
                   ),
                 ),
               ],
