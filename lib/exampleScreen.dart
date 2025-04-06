@@ -15,7 +15,7 @@ class M7ExpampleScreen extends StatefulWidget {
 class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
   //* MARK: - Private Variables
   //? =========================================================
-  List<String> _capturedImagePaths = []; // Changed to a list to store multiple images
+  List<String> _capturedImagePaths = [];
   final bool _isLoading = false;
   bool _startWithInfo = true;
   bool _allowAfterTimeOut = false;
@@ -70,28 +70,46 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
     );
   }
 
-  void _onStartLivelyness() async {
-    setState(() => _capturedImagePaths.clear()); // Clear previous images
+  /// Detects a blink and performs a user-defined action when a blink is detected.
+  /// [onBlinkDetected] is a callback that receives the image path (if available) and can perform any action.
+  Future<void> detectBlink(BuildContext context, {required Function(String?) onBlinkDetected}) async {
+    final config = M7DetectionConfig(
+      steps: [
+        M7LivelynessStepItem(
+          step: M7LivelynessStep.blink,
+          title: "Blink",
+          isCompleted: false,
+        ),
+      ],
+      startWithInfoScreen: _startWithInfo,
+      maxSecToDetect: _timeOutDuration == 100 ? 2500 : _timeOutDuration,
+      allowAfterMaxSec: _allowAfterTimeOut,
+      captureButtonColor: Colors.red,
+    );
 
     final String? response = await Eyeblinkdetectface.instance.detectLivelyness(
       context,
-      config: M7DetectionConfig(
-        steps: _veificationSteps,
-        startWithInfoScreen: _startWithInfo,
-        maxSecToDetect: _timeOutDuration == 100 ? 2500 : _timeOutDuration,
-        allowAfterMaxSec: _allowAfterTimeOut,
-        captureButtonColor: Colors.red,
-      ),
+      config: config,
     );
 
     if (response != null) {
-      setState(() {
-        _capturedImagePaths.add(response); // Add the captured image path
-      });
+      onBlinkDetected(response);
     }
+  }
 
-    // If the package supports multiple captures per step, you might need a loop or callback.
-    // For now, assuming it returns one image per full detection cycle.
+  void _onStartLivelyness() async {
+    setState(() => _capturedImagePaths.clear());
+
+    await detectBlink(
+      context,
+      onBlinkDetected: (imagePath) {
+        if (imagePath != null) {
+          setState(() {
+            _capturedImagePaths.add(imagePath);
+          });
+        }
+      },
+    );
   }
 
   String _getTitle(M7LivelynessStep step) {
@@ -133,10 +151,7 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
         SnackBar(
           content: const Text(
             "Need to have at least 1 step of verification",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 20),
           ),
           backgroundColor: Colors.red.shade900,
         ),
@@ -176,9 +191,7 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
         _buildContent(),
         Visibility(
           visible: _isLoading,
-          child: const Center(
-            child: CircularProgressIndicator.adaptive(),
-          ),
+          child: const Center(child: CircularProgressIndicator.adaptive()),
         ),
       ],
     );
@@ -223,11 +236,7 @@ class _M7ExpampleScreenState extends State<M7ExpampleScreen> {
             ),
             child: const Text(
               "Detect Livelyness",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600),
             ),
           ),
         ),
